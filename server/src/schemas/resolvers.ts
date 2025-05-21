@@ -1,75 +1,47 @@
-import { AuthenticationError } from 'apollo-server-express';
-import User from '../models';
-import { signToken } from '../services/auth.js';
+import express, { Application, Request } from 'express';
+import path from 'node:path';
+import { ApolloServer } from 'apollo-server-express';
+import { typeDefs, resolvers } from './schemas';
+import { getUserFromToken } from './utils/auth';
+import db from './config/connection.js';
+import routes from './routes/index.js';
 
-export const resolvers = {
-  Query: {
-    me: async (_parent: any, _args: any, context: any) => {
-      if (!context.user) {
-        throw new AuthenticationError('You must be logged in');
-      }
-      return User.findById(context.user._id);
-    },
-  },
+const app: Application = express();
+const PORT = process.env.PORT || 3001;
 
-  Mutation: {
-    addUser: async (
-      _parent: any,
-      { username, email, password }: { username: string; email: string; password: string }
-    ) => {
-      const user = await User.create({ username, email, password });
-      const token = signToken(user);
-      return { token, user };
-    },
+// Middleware
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-    login: async (
-      _parent: any,
-      { email, password }: { email: string; password: string }
-    ) => {
-      const user = await User.findOne({ email });
-      if (!user) {
-        throw new AuthenticationError('No user found with this email');
-      }
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/build')));
+}
 
-      const valid = await user.isCorrectPassword(password);
-      if (!valid) {
-        throw new AuthenticationError('Incorrect password');
-      }
+async function startApolloServer() {
+  // Create ApolloServer instance
+  const server = new ApolloServer({
+    typeDefs,
+    resolvers,
+    context: ({ req }: { req: Request }) => ({
+      user: getUserFromToken(req),
+    }),
+  });
 
-      const token = signToken(user);
-      return { token, user };
-    },
+  // Start Apollo
+  await server.start();
 
-    saveBook: async (
-      _parent: any,
-      { input }: { input: any },
-      context: any
-    ) => {
-      if (!context.user) {
-        throw new AuthenticationError('You must be logged in');
-      }
+  // Apply as Express middleware
+  server.applyMiddleware({ app, path: '/graphql' });
 
-      return User.findByIdAndUpdate(
-        context.user._id,
-        { $addToSet: { savedBooks: input } },
-        { new: true }
-      );
-    },
+  // Mount remaining REST routes
+  app.use(routes);
 
-    removeBook: async (
-      _parent: any,
-      { bookId }: { bookId: string },
-      context: any
-    ) => {
-      if (!context.user) {
-        throw new AuthenticationError('You must be logged in');
-      }
+  // Connect DB & start server
+  db.once('open', () => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server ready at http://localhost:${PORT}${server.graphqlPath}`);
+    });
+  });
+}
 
-      return User.findByIdAndUpdate(
-        context.user._id,
-        { $pull: { savedBooks: { bookId } } },
-        { new: true }
-      );
-    },
-  },
-};
+startApolloServer();

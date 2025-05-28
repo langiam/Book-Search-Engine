@@ -1,5 +1,6 @@
 // server/src/server.ts
 import express, { Application, Request } from 'express';
+import cors from 'cors';
 import path from 'node:path';
 import { ApolloServer } from 'apollo-server-express';
 import db from './config/connection.js';
@@ -10,35 +11,47 @@ import { getUserFromToken } from './utils/auth.js';
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
 
+// 1️⃣ Enable CORS *before* parsing bodies or applying middleware
+app.use(cors({
+  origin: 'https://book-search-engine-4fwj.onrender.com', // your client URL
+}));
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Serve React build in production
+// 2️⃣ Serve your Vite build in production (dist, not build)
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
+  app.use(
+    express.static(path.join(__dirname, '../client/dist'))
+  );
 }
 
 async function startApolloServer() {
   const server = new ApolloServer({
     typeDefs,
     resolvers,
-    context: ({ req }: { req: Request }) => {
-      const user = getUserFromToken(req);
-      return { user };
-    },
+    context: ({ req }: { req: Request }) => ({
+      user: getUserFromToken(req),
+    }),
   });
 
   await server.start();
-  // Work around express-types duplication by casting app to any
-  server.applyMiddleware({ app: app as any, path: '/graphql' });
 
-  // Legacy REST routes
+  // 3️⃣ Apply Apollo middleware AFTER CORS & body parsers
+  server.applyMiddleware({
+    app: app as any,      // workaround for express-type duplication
+    path: '/graphql',
+  });
+
+  // 4️⃣ (Optional) mount legacy REST routes
   app.use(routes);
 
-  // Connect to MongoDB & start listening
+  // 5️⃣ Connect to MongoDB & start Express
   db.once('open', () => {
     app.listen(PORT, () => {
-      console.log(`🚀 Server ready at http://localhost:${PORT}${server.graphqlPath}`);
+      console.log(
+        `🚀 Server ready at http://localhost:${PORT}${server.graphqlPath}`
+      );
     });
   });
 }

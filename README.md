@@ -121,7 +121,7 @@ Contributions are welcome!
 
 ## Testing
 
-Testomg can be done in GraphQL Studio
+Testing can be done in GraphQL Studio
 
 ## Contact
 

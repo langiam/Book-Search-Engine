@@ -1,22 +1,47 @@
 // server/src/services/auth.ts
-import * as jwt from 'jsonwebtoken';
+import type { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import type { JwtPayload } from '../utils/auth.js';
-
 dotenv.config();
 
-const SECRET_KEY = process.env.JWT_SECRET_KEY || 'your_secret_key';
-const EXPIRATION = '1h';
+interface JwtPayload {
+  _id: unknown;
+  username: string;
+  email: string;
+}
 
-/**
- * Signs a JWT for the given user payload.
- * @param user An object containing at least {_id, username, email}
- */
-export function signToken(user: JwtPayload): string {
+// Express middleware for your REST routes
+export const authenticateToken = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    res.sendStatus(401);
+    return;
+  }
+
+  const token = authHeader.split(' ')[1];
+  const secretKey = process.env.JWT_SECRET_KEY || '';
+  jwt.verify(token, secretKey, (err, user) => {
+    if (err) {
+      res.sendStatus(403);
+      return;
+    }
+    // @ts-ignore
+    req.user = user as JwtPayload;
+    next();
+  });
+};
+
+// Helper for GraphQL and for signing tokens
+export function signToken(user: { _id: unknown; username: string; email: string }): string {
   const payload = {
-    _id: user._id,
+    _id: String(user._id),
     username: user.username,
     email: user.email,
   };
-  return jwt.sign(payload, SECRET_KEY, { expiresIn: EXPIRATION });
+  const secretKey = process.env.JWT_SECRET_KEY || '';
+  return jwt.sign(payload, secretKey, { expiresIn: '1h' });
 }

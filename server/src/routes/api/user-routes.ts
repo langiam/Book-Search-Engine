@@ -1,5 +1,5 @@
+// server/src/routes/api/user-routes.ts
 import express from 'express';
-const router = express.Router();
 import {
   createUser,
   getSingleUser,
@@ -7,17 +7,23 @@ import {
   deleteBook,
   login,
 } from '../../controllers/user-controller.js';
-
-// import middleware
 import { authenticateToken } from '../../services/auth.js';
 
-// put authMiddleware anywhere we need to send a token for verification of user
-router.route('/').post(createUser).put(authenticateToken, saveBook);
+const router = express.Router();
 
-router.route('/login').post(login);
+// Sign up a new user
+router.post('/', createUser);
 
-router.route('/me').get(authenticateToken, getSingleUser);
+// Save a book (requires auth)
+router.put('/', authenticateToken, saveBook);
 
-router.route('/books/:bookId').delete(authenticateToken, deleteBook);
+// Login an existing user
+router.post('/login', login);
+
+// Get the authenticated user’s profile
+router.get('/me', authenticateToken, getSingleUser);
+
+// Delete a saved book
+router.delete('/books/:bookId', authenticateToken, deleteBook);
 
 export default router;

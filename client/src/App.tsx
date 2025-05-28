@@ -1,5 +1,6 @@
-// client/src/App.tsx
-
+// client/src/App.jsx
+import React from 'react';
+import { Outlet } from 'react-router-dom';
 import {
   ApolloClient,
   InMemoryCache,
@@ -7,14 +8,10 @@ import {
   createHttpLink
 } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
-import SearchBooks from './pages/SearchBooks';
-import SavedBooks from './pages/SavedBooks';
-import SignupForm from './components/SignupForm';
-import LoginForm from './components/LoginForm';
 import Navbar from './components/Navbar';
 
+// 1) Create Apollo Client as before
 const httpLink = createHttpLink({
   uri: '/graphql',
 });
@@ -37,15 +34,11 @@ const client = new ApolloClient({
 function App() {
   return (
     <ApolloProvider client={client}>
-      <BrowserRouter>
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<SearchBooks />} />
-          <Route path="/saved" element={<SavedBooks />} />
-          <Route path="/signup" element={<SignupForm />} />
-          <Route path="/login" element={<LoginForm />} />
-        </Routes>
-      </BrowserRouter>
+      <Navbar />
+      {/* 2) Outlet renders the active child route: SearchBooks or SavedBooks */}
+      <div className="container mt-4">
+        <Outlet />
+      </div>
     </ApolloProvider>
   );
 }

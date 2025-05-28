@@ -11,20 +11,12 @@ import { getUserFromToken } from './utils/auth.js';
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
 
-// 1️⃣ Enable CORS *before* parsing bodies or applying middleware
-app.use(cors({
-  origin: 'https://book-search-engine-4fwj.onrender.com', // your client URL
-}));
+// Enable CORS for all origins (you can lock this down later)
+app.use(cors({ origin: '*' }));
 
+// Parse request bodies
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-// 2️⃣ Serve your Vite build in production (dist, not build)
-if (process.env.NODE_ENV === 'production') {
-  app.use(
-    express.static(path.join(__dirname, '../client/dist'))
-  );
-}
 
 async function startApolloServer() {
   const server = new ApolloServer({
@@ -34,19 +26,26 @@ async function startApolloServer() {
       user: getUserFromToken(req),
     }),
   });
-
   await server.start();
 
-  // 3️⃣ Apply Apollo middleware AFTER CORS & body parsers
-  server.applyMiddleware({
-    app: app as any,      // workaround for express-type duplication
-    path: '/graphql',
-  });
+  // Mount GraphQL on /graphql
+  server.applyMiddleware({ app: app as any, path: '/graphql' });
 
-  // 4️⃣ (Optional) mount legacy REST routes
+  // Mount any legacy REST routes on /api
   app.use(routes);
 
-  // 5️⃣ Connect to MongoDB & start Express
+  // **Now** serve your built React files (client/dist) for all other GETs
+  if (process.env.NODE_ENV === 'production') {
+    app.use(
+      express.static(path.join(__dirname, '../../client/dist'))
+    );
+    // Fall back to index.html for React Router
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+    });
+  }
+
+  // Connect to DB & start server
   db.once('open', () => {
     app.listen(PORT, () => {
       console.log(

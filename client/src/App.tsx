@@ -1,5 +1,5 @@
 // client/src/App.jsx
-import React from 'react';
+// import React from 'react';
 import { Outlet } from 'react-router-dom';
 import {
   ApolloClient,
@@ -9,7 +9,7 @@ import {
 } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 
-import Navbar from './components/Navbar';
+import Navbar from './components/Navbar.jsx';
 
 // Now that vite-env.d.ts is in place, TS knows about import.meta.env
 const httpLink = createHttpLink({

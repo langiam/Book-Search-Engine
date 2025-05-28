@@ -11,9 +11,9 @@ import { setContext } from '@apollo/client/link/context';
 
 import Navbar from './components/Navbar';
 
-// 1) Create Apollo Client as before
+// Now that vite-env.d.ts is in place, TS knows about import.meta.env
 const httpLink = createHttpLink({
-  uri: '/graphql',
+  uri: import.meta.env.VITE_GRAPHQL_URL || '/graphql',
 });
 
 const authLink = setContext((_, { headers }) => {
@@ -35,7 +35,6 @@ function App() {
   return (
     <ApolloProvider client={client}>
       <Navbar />
-      {/* 2) Outlet renders the active child route: SearchBooks or SavedBooks */}
       <div className="container mt-4">
         <Outlet />
       </div>
